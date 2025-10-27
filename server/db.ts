@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, integrations, InsertIntegration, audits, InsertAudit, auditReports, InsertAuditReport } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,86 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Integration queries
+export async function createIntegration(data: InsertIntegration) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(integrations).values(data);
+  return result;
+}
+
+export async function getUserIntegrations(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(integrations).where(eq(integrations.userId, userId));
+}
+
+export async function getActiveIntegration(userId: number, provider: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(integrations)
+    .where(eq(integrations.userId, userId))
+    .limit(1);
+  return result.find(i => i.provider === provider && i.isActive === 1);
+}
+
+export async function updateIntegration(id: number, data: Partial<InsertIntegration>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(integrations).set(data).where(eq(integrations.id, id));
+}
+
+export async function deleteIntegration(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(integrations).where(eq(integrations.id, id));
+}
+
+// Audit queries
+export async function createAudit(data: InsertAudit) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(audits).values(data);
+  return result;
+}
+
+export async function getUserAudits(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(audits).where(eq(audits.userId, userId)).orderBy(audits.createdAt);
+}
+
+export async function getAuditById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(audits).where(eq(audits.id, id)).limit(1);
+  return result[0];
+}
+
+export async function updateAudit(id: number, data: Partial<InsertAudit>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(audits).set(data).where(eq(audits.id, id));
+}
+
+// Audit report queries
+export async function createAuditReport(data: InsertAuditReport) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(auditReports).values(data);
+}
+
+export async function getAuditReport(auditId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(auditReports).where(eq(auditReports.auditId, auditId)).limit(1);
+  return result[0];
+}
+
+export async function updateAuditReport(auditId: number, data: Partial<InsertAuditReport>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(auditReports).set(data).where(eq(auditReports.auditId, auditId));
+}
